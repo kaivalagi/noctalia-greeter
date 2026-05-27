@@ -13,4 +13,9 @@ if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -d "${XDG_RUNTIME_DIR}" ] || [ ! -w "${X
 fi
 
 unset WAYLAND_DISPLAY
-exec dbus-run-session -- cage -s -- "${GREETER_BIN}"
+if command -v dbus-run-session >/dev/null 2>&1; then
+  exec dbus-run-session -- cage -s -- "${GREETER_BIN}"
+fi
+
+echo "warn: dbus-run-session not found; starting cage without a session bus." >&2
+exec cage -s -- "${GREETER_BIN}"
