@@ -1,0 +1,40 @@
+Cleaning... 0 files.
+The Meson build system
+Version: 1.9.1
+Source dir: /mnt/storage/GitHub/noctalia-dev/noctalia-greeter
+Build dir: /mnt/storage/GitHub/noctalia-dev/noctalia-greeter/build
+Build type: native build
+Project name: noctalia-greeter
+Project version: 1.0.0
+C compiler for the host machine: cc (gcc 16.0.1 "cc (GCC) 16.0.1 20260425 (prerelease)")
+C linker for the host machine: cc ld.bfd 2.44
+C++ compiler for the host machine: c++ (gcc 16.0.1 "c++ (GCC) 16.0.1 20260425 (prerelease)")
+C++ linker for the host machine: c++ ld.bfd 2.44
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Dependency wayland-client found: YES 1.25.0 (cached)
+Dependency wayland-protocols found: YES 1.48 (cached)
+Dependency xkbcommon found: YES 1.13.1 (cached)
+Dependency freetype2 found: YES 26.6.20 (cached)
+Dependency fontconfig found: YES 2.16.0 (cached)
+Dependency cairo found: YES 1.18.4 (cached)
+Dependency cairo-ft found: YES 1.18.4 (cached)
+Dependency pango found: YES 1.56.3 (cached)
+Dependency pangocairo found: YES 1.56.3 (cached)
+Dependency pangoft2 found: YES 1.56.3 (cached)
+Dependency librsvg-2.0 found: YES 2.59.2 (cached)
+Dependency glib-2.0 found: YES 2.88.0 (cached)
+Dependency gobject-2.0 found: YES 2.88.0 (cached)
+Dependency gio-2.0 found: YES 2.88.0 (cached)
+Dependency egl found: YES 1.5 (cached)
+Dependency glesv2 found: YES 3.2 (cached)
+Dependency wayland-egl found: YES 18.1.0 (cached)
+Dependency libwebp found: YES 1.6.0 (cached)
+Program wayland-scanner found: YES (/usr/bin/wayland-scanner)
+Build targets in project: 5
+
+Found ninja-1.13.2 at /usr/bin/ninja
+ninja: Entering directory `/mnt/storage/GitHub/noctalia-dev/noctalia-greeter/build'
+ninja: no work to do.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /mnt/storage/GitHub/noctalia-dev/noctalia-greeter/build

@@ -87,12 +87,22 @@ struct Palette {
 };
 
 constexpr bool operator==(const Palette& lhs, const Palette& rhs) noexcept {
-  return lhs.primary == rhs.primary && lhs.onPrimary == rhs.onPrimary && lhs.secondary == rhs.secondary &&
-         lhs.onSecondary == rhs.onSecondary && lhs.tertiary == rhs.tertiary && lhs.onTertiary == rhs.onTertiary &&
-         lhs.error == rhs.error && lhs.onError == rhs.onError && lhs.surface == rhs.surface &&
-         lhs.onSurface == rhs.onSurface && lhs.surfaceVariant == rhs.surfaceVariant &&
-         lhs.onSurfaceVariant == rhs.onSurfaceVariant && lhs.outline == rhs.outline && lhs.shadow == rhs.shadow &&
-         lhs.hover == rhs.hover && lhs.onHover == rhs.onHover;
+  return lhs.primary == rhs.primary
+      && lhs.onPrimary == rhs.onPrimary
+      && lhs.secondary == rhs.secondary
+      && lhs.onSecondary == rhs.onSecondary
+      && lhs.tertiary == rhs.tertiary
+      && lhs.onTertiary == rhs.onTertiary
+      && lhs.error == rhs.error
+      && lhs.onError == rhs.onError
+      && lhs.surface == rhs.surface
+      && lhs.onSurface == rhs.onSurface
+      && lhs.surfaceVariant == rhs.surfaceVariant
+      && lhs.onSurfaceVariant == rhs.onSurfaceVariant
+      && lhs.outline == rhs.outline
+      && lhs.shadow == rhs.shadow
+      && lhs.hover == rhs.hover
+      && lhs.onHover == rhs.onHover;
 }
 
 extern Palette palette;
@@ -106,11 +116,5 @@ extern Palette palette;
 [[nodiscard]] Color resolveColorSpec(const ColorSpec& color) noexcept;
 
 void setPalette(const Palette& p);
-
-// Fired after setPalette() writes. Controls subscribe in their constructor
-// and re-apply palette-derived colors to their scene nodes on each emit.
 Signal<>& paletteChanged();
-
-// Linearly interpolates each field of two palettes in sRGB space. Used by
-// ThemeService to drive smooth cross-fade transitions on theme changes.
 Palette lerpPalette(const Palette& a, const Palette& b, float t);

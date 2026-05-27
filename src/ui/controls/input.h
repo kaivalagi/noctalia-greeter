@@ -1,70 +1,55 @@
 #pragma once
 
-#include <cstddef>
+#include "render/scene/input_area.h"
+#include "render/scene/rect_node.h"
+
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 
-namespace noctalia::ui {
+class Label;
 
-  enum KeyModifier : std::uint32_t {
-    KeyModifierShift = 1u << 0u,
-    KeyModifierCtrl = 1u << 1u,
-    KeyModifierAlt = 1u << 2u,
-    KeyModifierSuper = 1u << 3u,
-  };
+class Input : public Node {
+public:
+  Input();
 
-  class Input {
-  public:
-    void setPlaceholder(std::string placeholder);
-    void setPasswordMode(bool enabled) noexcept;
-    void setFocused(bool focused) noexcept;
-    void setValue(std::string value);
+  void setValue(std::string_view value);
+  void setPlaceholder(std::string_view placeholder);
+  void setFontSize(float size);
+  void setControlHeight(float height);
+  void setPasswordMode(bool enabled);
+  void setInvalid(bool invalid);
+  void setEnabled(bool enabled);
+  void setBold(bool bold);
 
-    void insertText(std::string_view text);
-    void backspace();
-    void deleteForward();
-    void clear();
-    bool handleKey(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modifiers);
-    void selectAll();
-    void clearSelection();
-    void moveCaretLeft(bool shift = false, bool word = false);
-    void moveCaretRight(bool shift = false, bool word = false);
-    void moveCaretHome(bool shift = false);
-    void moveCaretEnd(bool shift = false);
+  void setOnChange(std::function<void(const std::string&)> callback);
+  void setOnSubmit(std::function<void(const std::string&)> callback);
+  void setOnFocusLoss(std::function<void()> callback);
 
-    [[nodiscard]] const std::string& value() const noexcept { return m_value; }
-    [[nodiscard]] const std::string& placeholder() const noexcept { return m_placeholder; }
-    [[nodiscard]] bool passwordMode() const noexcept { return m_passwordMode; }
-    [[nodiscard]] bool focused() const noexcept { return m_focused; }
-    [[nodiscard]] bool empty() const noexcept { return m_value.empty(); }
-    [[nodiscard]] std::string displayValue() const;
-    [[nodiscard]] std::size_t glyphCount() const noexcept;
-    [[nodiscard]] std::size_t cursorGlyphIndex() const noexcept;
-    [[nodiscard]] std::size_t selectionStartGlyphIndex() const noexcept;
-    [[nodiscard]] std::size_t selectionEndGlyphIndex() const noexcept;
-    [[nodiscard]] bool hasSelection() const noexcept;
+  [[nodiscard]] const std::string& value() const noexcept { return m_value; }
+  [[nodiscard]] InputArea* inputArea() noexcept { return m_inputArea; }
 
-  private:
-    [[nodiscard]] std::size_t selectionStart() const noexcept;
-    [[nodiscard]] std::size_t selectionEnd() const noexcept;
-    void deleteSelection();
-    [[nodiscard]] std::size_t glyphIndexForByte(std::size_t byteOffset) const noexcept;
-    [[nodiscard]] std::size_t previousWordStartForByteOffset(std::size_t offset) const;
-    [[nodiscard]] std::size_t nextWordStartForByteOffset(std::size_t offset) const;
-    [[nodiscard]] std::size_t nextWordEndForByteOffset(std::size_t offset) const;
+private:
+  void doLayout(Renderer& renderer) override;
+  LayoutSize doMeasure(Renderer& renderer, const LayoutConstraints& constraints) override;
+  void applyVisualState();
+  void handleKey(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modifiers, bool preedit);
 
-    static bool isWordCodepoint(const std::string& text, std::size_t byteOffset);
-    static std::size_t nextCharPos(const std::string& text, std::size_t byteOffset);
-    static std::size_t prevCharPos(const std::string& text, std::size_t byteOffset);
-    static std::string utf32ToUtf8(std::uint32_t codepoint);
+  RectNode* m_background = nullptr;
+  Label* m_label = nullptr;
+  InputArea* m_inputArea = nullptr;
 
-    std::string m_value;
-    std::string m_placeholder;
-    std::size_t m_cursorPos = 0;
-    std::size_t m_selectionAnchor = 0;
-    bool m_passwordMode = false;
-    bool m_focused = false;
-  };
+  std::string m_value;
+  std::string m_placeholder;
+  float m_fontSize = 14.0f;
+  float m_controlHeight = 36.0f;
+  bool m_passwordMode = false;
+  bool m_invalid = false;
+  bool m_enabled = true;
 
-} // namespace noctalia::ui
+  std::function<void(const std::string&)> m_onChange;
+  std::function<void(const std::string&)> m_onSubmit;
+  std::function<void()> m_onFocusLoss;
+};

@@ -1,122 +1,197 @@
 project('noctalia-greeter', ['c', 'cpp'],
-  version: '0.1.0',
+  version: '1.0.0',
   default_options: [
     'cpp_std=c++20',
     'cpp_extensions=false',
-    'warning_level=3',
+    'warning_level=0',
+    'b_ndebug=if-release',
+    'c_args=-Wno-error=switch',
   ],
 )
 
+cc  = meson.get_compiler('c')
 cpp = meson.get_compiler('cpp')
-datadir = get_option('prefix') / get_option('datadir') / 'noctalia-greeter'
 
-add_project_arguments('-DNOCTALIA_GREETER_DATADIR="@0@"'.format(datadir), language: 'cpp')
+if get_option('buildtype') == 'release'
+  add_project_arguments(
+    '-march=native', '-mtune=native',
+    '-fomit-frame-pointer', '-ffunction-sections', '-fdata-sections',
+    language: ['c', 'cpp'],
+  )
+  add_project_link_arguments(
+    '-Wl,--gc-sections', '-Wl,--as-needed',
+    language: ['c', 'cpp'],
+  )
+endif
 
-egl_dep            = dependency('egl')
-gles2_dep          = dependency('glesv2')
-gbm_dep            = dependency('gbm')
-libdrm_dep         = dependency('libdrm')
 wayland_client_dep = dependency('wayland-client')
-wayland_egl_dep    = dependency('wayland-egl')
 wayland_protos_dep = dependency('wayland-protocols')
+xkbcommon_dep      = dependency('xkbcommon')
+freetype2_dep      = dependency('freetype2')
+fontconfig_dep     = dependency('fontconfig')
 cairo_dep          = dependency('cairo')
+cairo_ft_dep       = dependency('cairo-ft')
 pango_dep          = dependency('pango')
 pangocairo_dep     = dependency('pangocairo')
 pangoft2_dep       = dependency('pangoft2')
-librsvg_dep        = dependency('librsvg-2.0', include_type: 'system')
-xkbcommon_dep      = dependency('xkbcommon')
-pam_dep            = cpp.find_library('pam')
-util_dep           = cpp.find_library('util', required: false)
+librsvg_dep        = dependency('librsvg-2.0')
+glib_dep           = dependency('glib-2.0')
+gobject_dep        = dependency('gobject-2.0')
+gio_dep            = dependency('gio-2.0')
 
-wayland_scanner = find_program('wayland-scanner')
+egl_dep = dependency('egl', required: false)
+gles2_dep = dependency('glesv2', required: false)
+wayland_egl_dep = dependency('wayland-egl', required: false)
+
+if not egl_dep.found()
+  egl_dep = dependency('epoxy')
+endif
+
+if not gles2_dep.found()
+  gles2_dep = dependency('epoxy')
+endif
+
+stb_dep = declare_dependency(
+  include_directories: include_directories('third_party/stb', is_system: true),
+)
+
+libwebp_dep = dependency('libwebp', required: true)
+
+nlohmann_dep = declare_dependency(
+  include_directories: include_directories('third_party/nlohmann', is_system: true),
+)
+
+# ── Wayland protocol generation ───────────────────────────────────────────────
+wayland_scanner    = find_program('wayland-scanner')
 wayland_protos_dir = wayland_protos_dep.get_variable('pkgdatadir')
 
-xdg_shell_h = custom_target('xdg-shell-client-header',
-  input: wayland_protos_dir / 'stable/xdg-shell/xdg-shell.xml',
-  output: 'xdg-shell-client-protocol.h',
-  command: [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
-)
-xdg_shell_c = custom_target('xdg-shell-client-source',
-  input: wayland_protos_dir / 'stable/xdg-shell/xdg-shell.xml',
-  output: 'xdg-shell-client-protocol.c',
-  command: [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
-  depends: xdg_shell_h,
-)
+_protocol_sources = []
 
-sources = files(
-  'src/auth/pam_authenticator.cpp',
+foreach _p : [
+  ['xdg-shell', wayland_protos_dir / 'stable/xdg-shell/xdg-shell.xml'],
+  ['cursor-shape-v1', 'protocols/cursor-shape-v1.xml'],
+]
+  _name = _p[0]
+  _xml  = _p[1]
+
+  _h = custom_target(_name + '-client-header',
+    input:   _xml,
+    output:  _name + '-client-protocol.h',
+    command: [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+  )
+  _c = custom_target(_name + '-client-source',
+    input:   _xml,
+    output:  _name + '-client-protocol.c',
+    command: [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+    depends: _h,
+  )
+  _protocol_sources += _c
+endforeach
+
+_greeter_sources = files(
   'src/core/log.cpp',
+  'src/core/deferred_call.cpp',
   'src/core/resource_paths.cpp',
-  'src/main.cpp',
-  'src/platform/debug_wayland_platform.cpp',
-  'src/platform/drm_platform.cpp',
+  'src/core/ui_phase.cpp',
+  'src/wayland/wayland_client.cpp',
+  'src/wayland/wayland_seat.cpp',
+  'src/render/gl_shared_context.cpp',
+  'src/render/render_context.cpp',
+  'src/render/render_target.cpp',
+  'src/render/backend/render_backend.cpp',
+  'src/render/backend/gles_render_backend.cpp',
+  'src/render/backend/gles_framebuffer.cpp',
+  'src/render/backend/gles_texture_manager.cpp',
+  'src/render/core/color.cpp',
   'src/render/core/shader_program.cpp',
-  'src/render/gl_renderer.cpp',
+  'src/render/core/image_file_loader.cpp',
+  'src/render/core/image_decoder.cpp',
+  'src/render/core/async_texture_cache.cpp',
+  'src/render/core/shared_texture_cache.cpp',
+  'src/render/core/blur_cache.cpp',
+  'src/render/core/cached_layer.cpp',
   'src/render/programs/rect_program.cpp',
-  'src/render/shader_program.cpp',
-  'src/render/text_renderer.cpp',
-  'src/render/glyph_registry.cpp',
-  'src/session/session_launcher.cpp',
-  'src/session/session_registry.cpp',
-  'src/system/user_registry.cpp',
-  'src/system/vt_manager.cpp',
+  'src/render/programs/image_program.cpp',
+  'src/render/programs/glyph_program.cpp',
+  'src/render/programs/linear_gradient_program.cpp',
+  'src/render/programs/blur_program.cpp',
+  'src/render/programs/wallpaper_program.cpp',
+  'src/render/programs/spinner_program.cpp',
+  'src/render/programs/screen_corner_program.cpp',
+  'src/render/programs/effect_program.cpp',
+  'src/render/programs/audio_spectrum_program.cpp',
+  'src/render/programs/graph_program.cpp',
+  'src/render/scene/node.cpp',
+  'src/render/scene/input_area.cpp',
+  'src/render/scene/input_dispatcher.cpp',
+  'src/render/scene/graph_node.cpp',
+  'src/render/text/cairo_text_renderer.cpp',
+  'src/render/text/cairo_glyph_renderer.cpp',
+  'src/render/text/glyph_registry.cpp',
+  'src/render/animation/animation.cpp',
+  'src/render/animation/animation_manager.cpp',
+  'src/render/animation/motion_service.cpp',
+  'src/ui/controls/box.cpp',
+  'src/ui/controls/button.cpp',
   'src/ui/controls/input.cpp',
-  'src/ui/login_view.cpp',
-)
+  'src/ui/controls/label.cpp',
+  'src/ui/controls/flex.cpp',
+  'src/ui/controls/glyph.cpp',
+  'src/ui/controls/image.cpp',
+  'src/ui/controls/scroll_view.cpp',
+  'src/ui/controls/spacer.cpp',
+  'src/ui/controls/spinner.cpp',
+  'src/ui/controls/separator.cpp',
+  'src/ui/palette.cpp',
+  'src/theme/builtin_palettes.cpp',
+  'src/ui/style.cpp',
+  'src/greetd/greetd_client.cpp',
+  'src/greeter/greeter_surface.cpp',
+  'src/greeter/greeter_window.cpp',
+  'src/greeter/greeter.cpp',
+  'src/main.cpp',
+) + _protocol_sources
+
+_greeter_inc = [
+  include_directories('src'),
+  include_directories('third_party/stb', is_system: true),
+  include_directories('third_party/nlohmann', is_system: true),
+  include_directories('third_party/wuffs', is_system: true),
+]
 
 executable('noctalia-greeter',
-  [sources, xdg_shell_c],
-  include_directories: include_directories('src'),
+  sources: _greeter_sources,
   dependencies: [
+    wayland_client_dep,
     egl_dep,
     gles2_dep,
-    gbm_dep,
-    libdrm_dep,
-    wayland_client_dep,
     wayland_egl_dep,
+    xkbcommon_dep,
+    freetype2_dep,
+    fontconfig_dep,
     cairo_dep,
+    cairo_ft_dep,
     pango_dep,
     pangocairo_dep,
     pangoft2_dep,
     librsvg_dep,
-    xkbcommon_dep,
-    pam_dep,
-    util_dep,
+    glib_dep,
+    gobject_dep,
+    gio_dep,
+    stb_dep,
+    libwebp_dep,
+    nlohmann_dep,
+  ],
+  include_directories: _greeter_inc,
+  cpp_args: [
+    '-Wall', '-Wextra', '-Wpedantic', '-Wconversion', '-Wshadow',
+    '-DNOCTALIA_GREETER_VERSION="' + meson.project_version() + '"',
+    '-DNOCTALIA_GREETER_ASSETS_DIR="' + meson.project_source_root() / 'assets' + '"',
+    '-DNOCTALIA_GREETER_INSTALLED_ASSETS_DIR="' + get_option('datadir') / 'noctalia-greeter' / 'assets' + '"',
   ],
   install: true,
 )
 
-session_registry_test = executable('session-registry-test',
-  files(
-    'tests/session_registry_test.cpp',
-    'src/session/session_registry.cpp',
-  ),
-  include_directories: include_directories('src'),
+install_subdir('assets',
+  install_dir: get_option('datadir') / 'noctalia-greeter',
 )
-
-test('session registry', session_registry_test)
-
-input_control_test = executable('input-control-test',
-  files(
-    'tests/input_control_test.cpp',
-    'src/ui/controls/input.cpp',
-  ),
-  include_directories: include_directories('src'),
-  dependencies: [xkbcommon_dep],
-)
-
-test('input control', input_control_test)
-
-user_registry_test = executable('user-registry-test',
-  files(
-    'tests/user_registry_test.cpp',
-    'src/system/user_registry.cpp',
-  ),
-  include_directories: include_directories('src'),
-)
-
-test('user registry', user_registry_test)
-
-install_data('data/pam/noctalia-greeter', install_dir: '/etc/pam.d')
-install_subdir('assets/fonts', install_dir: get_option('datadir') / 'noctalia-greeter')
-install_data('assets/noctalia.svg', install_dir: get_option('datadir') / 'noctalia-greeter')

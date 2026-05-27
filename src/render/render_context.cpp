@@ -8,19 +8,11 @@
 #include "render/core/texture_manager.h"
 #include "render/gl_shared_context.h"
 #include "render/render_target.h"
-#include "render/scene/audio_spectrum_node.h"
-#include "render/scene/effect_node.h"
 #include "render/scene/glyph_node.h"
-#include "render/scene/graph_node.h"
 #include "render/scene/image_node.h"
 #include "render/scene/node.h"
 #include "render/scene/rect_node.h"
-#include "render/scene/screen_corner_node.h"
-#include "render/scene/spinner_node.h"
 #include "render/scene/text_node.h"
-#include "render/scene/wallpaper_node.h"
-#include "ui/style.h"
-
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -147,6 +139,11 @@ void RenderContext::setTextFontFamily(std::string family) {
   ++m_textMetricsGeneration;
 }
 
+void RenderContext::notifyFontConfigChanged() {
+  m_textRenderer.notifyFontConfigChanged();
+  ++m_textMetricsGeneration;
+}
+
 void RenderContext::renderScene(RenderTarget& target, Node* sceneRoot) {
   UiPhaseScope renderPhase(UiPhase::Render);
   if (m_backend == nullptr) {
@@ -174,8 +171,8 @@ void RenderContext::renderScene(RenderTarget& target, Node* sceneRoot) {
 }
 
 TextMetrics RenderContext::measureText(std::string_view text, float fontSize, bool bold, float maxWidth, int maxLines,
-                                       TextAlign align) {
-  auto m = m_textRenderer.measure(text, fontSize, bold, maxWidth, maxLines, align);
+                                       TextAlign align, std::string_view fontFamily) {
+  auto m = m_textRenderer.measure(text, fontSize, bold, maxWidth, maxLines, align, fontFamily);
   return TextMetrics{.width = m.width,
                      .left = m.left,
                      .right = m.right,
@@ -260,17 +257,18 @@ void RenderContext::renderNode(const Node* node, const Mat3& parentTransform, fl
   case NodeType::Text: {
     const auto* text = static_cast<const TextNode*>(node);
     if (!text->text().empty()) {
+      const auto& font = text->fontFamily();
       if (text->hasShadow()) {
         auto shadowColor = text->shadowColor();
         shadowColor.a *= effectiveOpacity;
         const Mat3 shadowTransform = worldTransform * Mat3::translation(text->shadowOffsetX(), text->shadowOffsetY());
         m_textRenderer.draw(sw, sh, 0.0f, 0.0f, text->text(), text->fontSize(), shadowColor, shadowTransform,
-                            text->bold(), text->maxWidth(), text->maxLines(), text->textAlign());
+                            text->bold(), text->maxWidth(), text->maxLines(), text->textAlign(), font);
       }
       auto color = text->color();
       color.a *= effectiveOpacity;
       m_textRenderer.draw(sw, sh, 0.0f, 0.0f, text->text(), text->fontSize(), color, worldTransform, text->bold(),
-                          text->maxWidth(), text->maxLines(), text->textAlign());
+                          text->maxWidth(), text->maxLines(), text->textAlign(), font);
     }
     break;
   }
@@ -314,72 +312,9 @@ void RenderContext::renderNode(const Node* node, const Mat3& parentTransform, fl
     }
     break;
   }
-  case NodeType::Spinner: {
-    const auto* spinner = static_cast<const SpinnerNode*>(node);
-    auto style = spinner->style();
-    style.color.a *= effectiveOpacity;
-    m_backend->drawSpinner(sw, sh, node->width(), node->height(), style, worldTransform);
-    break;
-  }
-  case NodeType::ScreenCorner: {
-    const auto* corner = static_cast<const ScreenCornerNode*>(node);
-    auto style = corner->style();
-    style.color.a *= effectiveOpacity;
-    const float pixelScaleX = sw > 0.0f ? bw / sw : 1.0f;
-    const float pixelScaleY = sh > 0.0f ? bh / sh : 1.0f;
-    m_backend->drawScreenCorner(sw, sh, pixelScaleX, pixelScaleY, node->width(), node->height(), style, worldTransform);
-    break;
-  }
-  case NodeType::AudioSpectrum: {
-    const auto* spectrum = static_cast<const AudioSpectrumNode*>(node);
-    auto style = spectrum->style();
-    style.lowColor.a *= effectiveOpacity;
-    style.highColor.a *= effectiveOpacity;
-    const float pixelScaleX = sw > 0.0f ? bw / sw : 1.0f;
-    const float pixelScaleY = sh > 0.0f ? bh / sh : 1.0f;
-    m_backend->drawAudioSpectrum(sw, sh, pixelScaleX, pixelScaleY, node->width(), node->height(), style,
-                                 spectrum->values(), worldTransform);
-    break;
-  }
-  case NodeType::Effect: {
-    const auto* effect = static_cast<const EffectNode*>(node);
-    auto style = effect->style();
-    style.bgColor.a *= effectiveOpacity;
-    m_backend->drawEffect(sw, sh, node->width(), node->height(), style, worldTransform);
-    break;
-  }
-  case NodeType::Graph: {
-    const auto* graph = static_cast<const GraphNode*>(node);
-    if (graph->textureId() != 0) {
-      auto style = graph->style();
-      style.lineColor1.a *= effectiveOpacity;
-      style.lineColor2.a *= effectiveOpacity;
-      style.graphFillOpacity *= effectiveOpacity;
-      m_backend->drawGraph(graph->textureId(), graph->textureWidth(), sw, sh, node->width(), node->height(), style,
-                           worldTransform);
-    }
-    break;
-  }
-  case NodeType::Wallpaper: {
-    const auto* wallpaper = static_cast<const WallpaperNode*>(node);
-    const bool hasSource1 = wallpaper->sourceKind1() == WallpaperSourceKind::Color || wallpaper->texture1() != 0;
-    if (hasSource1) {
-      const bool hasSource2 = wallpaper->sourceKind2() == WallpaperSourceKind::Color || wallpaper->texture2() != 0;
-      const WallpaperSourceKind sourceKind2 = hasSource2 ? wallpaper->sourceKind2() : wallpaper->sourceKind1();
-      const TextureId texture2 = hasSource2 ? wallpaper->texture2() : wallpaper->texture1();
-      const Color& sourceColor2 = hasSource2 ? wallpaper->sourceColor2() : wallpaper->sourceColor1();
-      const float imageWidth2 = hasSource2 ? wallpaper->imageWidth2() : wallpaper->imageWidth1();
-      const float imageHeight2 = hasSource2 ? wallpaper->imageHeight2() : wallpaper->imageHeight1();
-      const float progress = hasSource2 ? wallpaper->progress() : 0.0f;
-      m_backend->drawWallpaper(wallpaper->transition(), wallpaper->sourceKind1(), wallpaper->texture1(),
-                               wallpaper->sourceColor1(), sourceKind2, texture2, sourceColor2, sw, sh, node->width(),
-                               node->height(), wallpaper->imageWidth1(), wallpaper->imageHeight1(), imageWidth2,
-                               imageHeight2, progress, static_cast<float>(wallpaper->fillMode()),
-                               wallpaper->transitionParams(), wallpaper->fillColor(), worldTransform);
-    }
-    break;
-  }
   case NodeType::Base:
+  case NodeType::InputArea:
+  case NodeType::Container:
     break;
   }
 

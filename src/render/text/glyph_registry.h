@@ -1,21 +1,19 @@
 #pragma once
 
-#include <string>
+#include <cstdint>
 #include <string_view>
 #include <unordered_map>
+#include <optional>
+#include <string>
 
-// Glyph names resolve in this order:
-// 1. Explicit codepoint literals such as U+F123 or 0xF123.
-// 2. Hand-curated Noctalia aliases from glyph_registry.cpp.
-// 3. Native Tabler icon names from assets/fonts/tabler.json.
-namespace GlyphRegistry {
+class GlyphRegistry {
+public:
+  static void initialize();
+  static char32_t lookup(std::string_view name);
+  static void registerGlyph(std::string_view name, char32_t codepoint);
+  [[nodiscard]] static std::optional<std::string> fontPath();
 
-  [[nodiscard]] bool contains(std::string_view name);
-  [[nodiscard]] char32_t lookup(std::string_view name);
-
-  // Full Tabler icon catalog (loaded from assets/fonts/tabler.json on first registry use).
-  [[nodiscard]] const std::unordered_map<std::string, char32_t>& tablerIcons();
-  // Hand-curated Noctalia alias -> native Tabler icon name map.
-  [[nodiscard]] const std::unordered_map<std::string, std::string_view>& aliases();
-
-} // namespace GlyphRegistry
+private:
+  static void loadTablerGlyphs();
+  static std::unordered_map<std::string, char32_t>& glyphs();
+};

@@ -8,7 +8,8 @@ struct Vec2 {
   float y = 0.0f;
 };
 
-struct Mat3 {
+class Mat3 {
+public:
   // Column-major for direct upload to GLSL mat3.
   std::array<float, 9> m = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 

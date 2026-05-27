@@ -1,9 +1,11 @@
 #pragma once
 
 #include <filesystem>
+#include <string_view>
 
-namespace noctalia::core {
+namespace paths {
 
-  std::filesystem::path assetPath(const std::filesystem::path& relative);
+  [[nodiscard]] const std::filesystem::path& assetsRoot();
+  [[nodiscard]] std::filesystem::path assetPath(std::string_view relativePath);
 
-} // namespace noctalia::core
+} // namespace paths

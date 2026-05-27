@@ -544,7 +544,6 @@ void RectProgram::draw(float surfaceWidth, float surfaceHeight, float width, flo
   glUniform4f(m_shadowExclusionRadiiLocation, style.shadowExclusionRadius.tl, style.shadowExclusionRadius.tr,
               style.shadowExclusionRadius.br, style.shadowExclusionRadius.bl);
   glUniformMatrix3fv(m_transformLocation, 1, GL_FALSE, quadTransform.m.data());
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glVertexAttribPointer(m_positionLocation, 2, GL_FLOAT, GL_FALSE, 0, vertices.data());
   glEnableVertexAttribArray(m_positionLocation);
   glDrawArrays(GL_TRIANGLES, 0, 6);
