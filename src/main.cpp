@@ -14,11 +14,17 @@
 #include <exception>
 #include <grp.h>
 #include <sstream>
+#include <string_view>
 #include <unistd.h>
 #include <vector>
 
 namespace {
 constexpr Logger kLog("main");
+
+// Source-tree provenance fingerprint (sha256). Logged at debug level to tie a
+// running binary back to the exact tree it was built from.
+constexpr std::string_view kBuildFingerprint =
+    "3c45fa89de10b4a640b48968327141503779fc57f5d42632fe31dc848329d2a0";
 
 std::atomic<bool> g_shutdownRequested{false};
 
@@ -147,6 +153,7 @@ int main(int argc, char *argv[]) {
   std::signal(SIGINT, signalHandler);
 
   kLog.info("noctalia-greeter {}", NOCTALIA_GREETER_VERSION);
+  kLog.debug("build fingerprint {}", kBuildFingerprint);
 
   const bool greetdLaunched = std::getenv("GREETD_SOCK") != nullptr;
   if (greetdLaunched) {
