@@ -42,7 +42,7 @@ Install everything below on the machine where greetd will run. Each list covers 
 
 ```sh
 sudo pacman -S meson gcc just \
-  greetd cage dbus polkit \
+  greetd cage dbus \
   wayland wayland-protocols \
   libglvnd freetype2 fontconfig \
   cairo pango \
@@ -54,7 +54,7 @@ sudo pacman -S meson gcc just \
 
 ```sh
 sudo dnf install meson gcc-c++ just \
-  greetd cage dbus polkit \
+  greetd cage dbus \
   wayland-devel wayland-protocols-devel \
   libEGL-devel mesa-libGLES-devel \
   freetype-devel fontconfig-devel \
@@ -67,7 +67,7 @@ sudo dnf install meson gcc-c++ just \
 
 ```sh
 sudo apt install meson g++ just \
-  greetd cage dbus policykit-1 \
+  greetd cage dbus \
   libwayland-dev wayland-protocols \
   libegl-dev libgles-dev \
   libfreetype-dev libfontconfig-dev \
@@ -80,7 +80,7 @@ sudo apt install meson g++ just \
 
 ```sh
 sudo xbps-install meson ninja pkg-config git \
-  greetd cage dbus polkit \
+  greetd cage dbus \
   wayland-devel wayland-protocols libepoxy-devel \
   MesaLib-devel libglvnd-devel cairo-devel \
   pango-devel fontconfig-devel freetype-devel \
@@ -124,7 +124,7 @@ sudo just install
 
 `just install` runs the same system setup scripts after Meson install.
 
-Meson installs the greeter binary, session launcher, assets, and polkit policy:
+Meson installs the greeter binary, session launcher, assets, and a polkit policy file (for shell-driven appearance sync):
 
 ```text
 /usr/local/bin/noctalia-greeter
@@ -181,7 +181,7 @@ Logs: `/var/log/noctalia-greeter.log` and `/var/lib/noctalia-greeter/greeter.log
 
 ## Matching Noctalia Shell
 
-With [Noctalia Shell v5](https://github.com/noctalia-dev/noctalia-shell/tree/v5) installed, open **Settings → Shell → Security → Noctalia Greeter → Sync Now**. The shell copies your wallpaper and palette to the greeter (admin prompt via polkit). After syncing, log out or restart greetd to see the changes on the login screen.
+With [Noctalia Shell v5](https://github.com/noctalia-dev/noctalia-shell/tree/v5) installed, open **Settings → Shell → Security → Noctalia Greeter → Sync Now**. The shell stages files and runs `pkexec noctalia-greeter-apply-appearance` to install them under `/var/lib/noctalia-greeter/`. After syncing, log out or restart greetd to see the changes on the login screen.
 
 The greeter adds a **Synced** color scheme when sync data is present. Session and scheme choices you make on the login screen are remembered in `/var/lib/noctalia-greeter/greeter.conf`.
 
@@ -211,7 +211,7 @@ The greeter works without a mouse.
 - **Blank screen** - Check `/var/log/noctalia-greeter.log` and `/var/lib/noctalia-greeter/greeter.log`. Run `just setup-log-dir` if they are missing.
 - **`WAYLAND_DISPLAY is not set`** - greetd must use `noctalia-greeter-session` (it starts Cage). Fix `command` in `/etc/greetd/config.toml`.
 - **Wrong session on startup** - If `default_session` is set in `greeter.conf`, it wins over last-used `session`. Run `noctalia-greeter sessions` for exact **Name** spelling.
-- **Synced look missing** - Install shell v5, greeter, and the polkit policy; sync again; restart greetd or log out once.
+- **Synced look missing** - Install greeter and shell v5 (with polkit where the shell runs); use **Sync Now** again; restart greetd or log out once.
 
 Stuck display over SSH:
 
