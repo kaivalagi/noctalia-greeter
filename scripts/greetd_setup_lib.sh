@@ -46,7 +46,7 @@ print_greetd_config_commands() {
   local session_bin="$1"
   local greeter_user="$2"
 
-  echo "Configure greetd — copy and paste the block below."
+  echo "Configure greetd - copy and paste the block below."
   echo "On an existing greetd setup this replaces config.toml (a .bak copy is made first)."
   echo ""
   cat <<EOF
