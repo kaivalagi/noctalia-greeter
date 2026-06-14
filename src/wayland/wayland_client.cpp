@@ -84,14 +84,76 @@ namespace {
     return -1;
   }
 
-  [[nodiscard]] const greeter::GreeterOutputPlacement*
-  findOutputPlacement(const std::vector<greeter::GreeterOutputPlacement>& layout, std::string_view name) {
-    for (const auto& placement : layout) {
-      if (placement.name == name) {
-        return &placement;
-      }
+  [[nodiscard]] std::optional<WaylandOutputLayout> chainedLayoutForOutput(
+      const WaylandOutputInfo& output, const std::vector<greeter::GreeterOutputPlacement>& layout,
+      const std::vector<WaylandOutputInfo>& outputs
+  ) {
+    if (layout.empty()) {
+      return std::nullopt;
     }
-    return nullptr;
+
+    std::vector<const greeter::GreeterOutputPlacement*> ordered;
+    ordered.reserve(layout.size());
+    for (const auto& placement : layout) {
+      ordered.push_back(&placement);
+    }
+    std::sort(
+        ordered.begin(), ordered.end(),
+        [](const greeter::GreeterOutputPlacement* lhs, const greeter::GreeterOutputPlacement* rhs) {
+          if (lhs->y != rhs->y) {
+            return lhs->y < rhs->y;
+          }
+          if (lhs->x != rhs->x) {
+            return lhs->x < rhs->x;
+          }
+          return lhs->name < rhs->name;
+        }
+    );
+
+    int32_t rowConfigY = ordered.front()->y;
+    int32_t layoutX = 0;
+    int32_t layoutY = 0;
+    int32_t rowMaxLogicalHeight = 0;
+    for (const greeter::GreeterOutputPlacement* placement : ordered) {
+      const WaylandOutputInfo* out = nullptr;
+      for (const auto& candidate : outputs) {
+        if (candidate.done && candidate.name == placement->name) {
+          out = &candidate;
+          break;
+        }
+      }
+      if (out == nullptr) {
+        continue;
+      }
+
+      const auto logical = logicalSizeForOutputInfo(*out);
+      if (!logical) {
+        continue;
+      }
+
+      if (placement != ordered.front() && placement->y != rowConfigY) {
+        layoutY += rowMaxLogicalHeight;
+        layoutX = 0;
+        rowConfigY = placement->y;
+        rowMaxLogicalHeight = 0;
+      }
+
+      if (out->output == output.output) {
+        return WaylandOutputLayout{
+            .x = layoutX,
+            .y = layoutY,
+            .width = logical->first,
+            .height = logical->second,
+        };
+      }
+
+      if (static_cast<int32_t>(logical->second) > rowMaxLogicalHeight) {
+        rowMaxLogicalHeight = static_cast<int32_t>(logical->second);
+      }
+      layoutX += static_cast<int32_t>(logical->first);
+    }
+
+    return std::nullopt;
   }
 
   [[nodiscard]] std::size_t readyOutputCount(const std::vector<WaylandOutputInfo>& outputs) {
@@ -472,13 +534,16 @@ std::optional<WaylandOutputLayout> WaylandClient::layoutForOutput(const WaylandO
 
   int32_t x = output.x;
   int32_t y = output.y;
-  if (const greeter::GreeterOutputPlacement* configured = findOutputPlacement(m_outputLayout, output.name)) {
-    x = configured->x;
-    y = configured->y;
+  if (!allReadyOutputsShareOrigin(m_outputs)) {
+    // Compositor layout coordinates already account for greeter output scale.
+  } else if (const auto chained = chainedLayoutForOutput(output, m_outputLayout, m_outputs)) {
+    x = chained->x;
+    y = chained->y;
     kLog.info(
-        "output '{}' configured layout at ({},{}) {}x{}", output.name.empty() ? "?" : output.name.c_str(), x, y,
-        logical->first, logical->second
+        "output '{}' chained layout at ({},{}) {}x{} (compositor reported overlapping origins)",
+        output.name.empty() ? "?" : output.name.c_str(), x, y, chained->width, chained->height
     );
+    return chained;
   } else if (allReadyOutputsShareOrigin(m_outputs)) {
     std::vector<const WaylandOutputInfo*> ordered;
     ordered.reserve(m_outputs.size());

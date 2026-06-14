@@ -186,7 +186,7 @@ When using multiple monitors, set `output_layout` manually or sync from Noctalia
 output_layout="DP-1:0,0; HDMI-A-1:1920,0; DP-2:3840,0"
 ```
 
-Monitors to the left of the origin can use negative X values. Outputs not listed are placed to the right of the configured layout with a warning in the compositor log.
+Coordinates are logical pixels from your desktop compositor. The greeter uses them for **order and row grouping**, then places outputs edge-to-edge at its own scale so the cursor can move between monitors.
 
 Test locally with:
 
