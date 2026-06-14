@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Virtual terminal switching: `Ctrl+Alt+F1`–`F12` switches VTs from the greeter
+  (previously every key was forwarded to the UI with no VT handling).
 - Keyboard reference and a troubleshooting section in the README.
 - Configurable cursor theme, size and search path. The compositor now reads
   `cursor_theme`, `cursor_size` and `cursor_path` from `greeter.conf`, falling

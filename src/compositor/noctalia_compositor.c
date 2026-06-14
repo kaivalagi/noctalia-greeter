@@ -13,6 +13,7 @@
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
 #include <wlr/backend.h>
+#include <wlr/backend/session.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
@@ -32,6 +33,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #ifndef NOCTALIA_GREETER_INSTALLED_BINDIR
 #define NOCTALIA_GREETER_INSTALLED_BINDIR "/usr/local/bin"
@@ -77,6 +79,7 @@ struct greeter_view {
 struct greeter_server {
   struct wl_display *display;
   struct wlr_backend *backend;
+  struct wlr_session *session;
   struct wlr_renderer *renderer;
   struct wlr_allocator *allocator;
   struct wlr_scene *scene;
@@ -809,9 +812,26 @@ static void handle_keyboard_modifiers(struct wl_listener *listener,
 
 static void handle_keyboard_key(struct wl_listener *listener, void *data) {
   struct greeter_keyboard *keyboard = wl_container_of(listener, keyboard, key);
+  struct greeter_server *server = keyboard->server;
   struct wlr_keyboard_key_event *event = data;
-  wlr_seat_keyboard_notify_key(keyboard->server->seat, event->time_msec,
-                               event->keycode, event->state);
+
+  if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED && server->session != NULL) {
+    const xkb_keysym_t *syms;
+    int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state,
+                                       event->keycode + 8, &syms);
+    for (int i = 0; i < nsyms; i++) {
+      xkb_keysym_t sym = syms[i];
+      if (sym >= (xkb_keysym_t)XKB_KEY_XF86Switch_VT_1 &&
+          sym <= (xkb_keysym_t)XKB_KEY_XF86Switch_VT_12) {
+        unsigned vt = (unsigned)(sym - (xkb_keysym_t)XKB_KEY_XF86Switch_VT_1 + 1);
+        wlr_session_change_vt(server->session, vt);
+        return;
+      }
+    }
+  }
+
+  wlr_seat_keyboard_notify_key(server->seat, event->time_msec, event->keycode,
+                               event->state);
 }
 
 static void handle_keyboard_destroy(struct wl_listener *listener, void *data) {
@@ -1106,8 +1126,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  server.backend =
-      wlr_backend_autocreate(wl_display_get_event_loop(server.display), NULL);
+  server.backend = wlr_backend_autocreate(
+      wl_display_get_event_loop(server.display), &server.session);
   if (server.backend == NULL) {
     fprintf(stderr, "failed to create wlroots backend\n");
     wl_display_destroy(server.display);

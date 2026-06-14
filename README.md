@@ -275,6 +275,7 @@ The greeter works without a mouse.
 | `Esc` | Close menu or leave password step |
 | `F3` | Session picker |
 | `F7` | Color scheme picker |
+| `Ctrl+Alt+F1`–`F12` | Switch to virtual terminal (TTY) |
 
 ## Troubleshooting
 
