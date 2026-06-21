@@ -10,6 +10,7 @@
 #include "ui/style.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
@@ -26,9 +27,39 @@ namespace {
   constexpr float kPlaceholderAlpha = 0.68f;
   constexpr float kPasswordGlyphScale = 0.82f;
 
-  char32_t passwordMaskCodepoint() { return GlyphRegistry::lookup("circle-filled"); }
+  Input::PasswordMaskStyle g_passwordMaskStyle = Input::PasswordMaskStyle::CircleFilled;
+
+  char32_t passwordMaskCodepointForIndex(std::size_t index) {
+    if (g_passwordMaskStyle == Input::PasswordMaskStyle::CircleFilled) {
+      return GlyphRegistry::lookup("circle-filled");
+    }
+    static const std::array<char32_t, 7> randomCodepoints = {
+        GlyphRegistry::lookup("circle-filled"),        GlyphRegistry::lookup("pentagon-filled"),
+        GlyphRegistry::lookup("michelin-star-filled"), GlyphRegistry::lookup("square-rounded-filled"),
+        GlyphRegistry::lookup("guitar-pick-filled"),   GlyphRegistry::lookup("blob-filled"),
+        GlyphRegistry::lookup("triangle-filled"),
+    };
+    return randomCodepoints[index % randomCodepoints.size()];
+  }
+
+  void layoutPasswordMaskGlyph(
+      Renderer& renderer, GlyphNode& glyph, char32_t codepoint, float glyphSize, float cellX, float cellSize,
+      float inputHeight
+  ) {
+    glyph.setCodepoint(codepoint);
+    glyph.setFontSize(glyphSize);
+    glyph.setHitTestVisible(false);
+    const auto metrics = renderer.measureGlyph(codepoint, glyphSize);
+    const float cellCenterX = cellX + cellSize * 0.5f;
+    const float emCenterX = glyphSize * 0.5f;
+    const float inkCenterY = (metrics.top + metrics.bottom) * 0.5f;
+    const float rowCenterY = inputHeight * 0.5f;
+    glyph.setPosition(cellCenterX - emCenterX, rowCenterY - inkCenterY);
+  }
 
 } // namespace
+
+void Input::setPasswordMaskStyle(PasswordMaskStyle style) noexcept { g_passwordMaskStyle = style; }
 
 Input::Input() : Node(NodeType::Container) {
   auto bg = std::make_unique<RectNode>();
@@ -336,13 +367,10 @@ void Input::doLayout(Renderer& renderer) {
   m_stopX.push_back(0.0f);
 
   std::size_t charCount = 0;
-  float maskGlyphY = 0.0f;
   float passwordGlyphSize = 0.0f;
+  const float passwordCellSize = showPasswordGlyphs ? std::round(m_fontSize * kPasswordGlyphScale) : 0.0f;
   if (showPasswordGlyphs) {
     passwordGlyphSize = m_fontSize * kPasswordGlyphScale;
-    const auto metrics = renderer.measureGlyph(passwordMaskCodepoint(), passwordGlyphSize);
-    const float glyphInkCenter = (metrics.top + metrics.bottom) * 0.5f;
-    maskGlyphY = std::round(h * 0.5f - glyphInkCenter);
   }
 
   if (!m_value.empty()) {
@@ -353,8 +381,7 @@ void Input::doLayout(Renderer& renderer) {
       ++charCount;
       m_stopByte.push_back(pos);
       if (showPasswordGlyphs) {
-        const auto metrics = renderer.measureGlyph(passwordMaskCodepoint(), passwordGlyphSize);
-        maskX += metrics.width;
+        maskX += passwordCellSize;
         m_stopX.push_back(maskX);
       }
     }
@@ -377,14 +404,12 @@ void Input::doLayout(Renderer& renderer) {
     float gx = -m_scrollOffset;
     for (std::size_t i = 0; i < m_passwordGlyphs.size(); ++i) {
       auto* glyph = m_passwordGlyphs[i];
-      const char32_t codepoint = passwordMaskCodepoint();
-      const auto metrics = renderer.measureGlyph(codepoint, passwordGlyphSize);
-      glyph->setCodepoint(codepoint);
-      glyph->setFontSize(passwordGlyphSize);
+      layoutPasswordMaskGlyph(
+          renderer, *glyph, passwordMaskCodepointForIndex(i), passwordGlyphSize, gx, passwordCellSize, h
+      );
       glyph->setColor(colorForRole(ColorRole::OnSurface));
-      glyph->setPosition(gx, maskGlyphY);
       glyph->setVisible(true);
-      gx += metrics.width;
+      gx += passwordCellSize;
     }
   } else {
     syncPasswordGlyphNodes(0);

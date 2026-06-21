@@ -292,6 +292,7 @@ Admin-only settings in `greeter.toml` (set by you, not the UI):
 - `[cursor].size` - cursor size in pixels (e.g. `24`); missing → `24`
 - `[cursor].path` - colon-separated theme search path (sets `XCURSOR_PATH`)
 - `[keyboard].layout` / `.variant` / `.options` - XKB keymap (compositor)
+- `[appearance].password_style` - password mask style: `default` (filled circles) or `random` (cycled glyph shapes, same as Noctalia shell)
 
 The greeter updates `[session].last` and `[appearance].scheme` when you change them in the UI.
 

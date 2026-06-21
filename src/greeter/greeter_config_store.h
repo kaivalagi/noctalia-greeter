@@ -13,6 +13,7 @@ namespace greeter::config {
     std::optional<std::string> userDefault;
 
     std::optional<std::string> appearanceScheme;
+    std::optional<std::string> appearancePasswordStyle;
 
     std::optional<std::string> outputName;
     std::optional<std::string> outputLayout;

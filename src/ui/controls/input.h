@@ -17,6 +17,11 @@ class Node;
 
 class Input : public Node {
 public:
+  enum class PasswordMaskStyle : std::uint8_t {
+    CircleFilled = 0,
+    RandomIcons = 1,
+  };
+
   Input();
 
   void setValue(std::string_view value);
@@ -39,6 +44,8 @@ public:
   );
 
   void selectAll();
+
+  static void setPasswordMaskStyle(PasswordMaskStyle style) noexcept;
 
   [[nodiscard]] const std::string& value() const noexcept { return m_value; }
   [[nodiscard]] InputArea* inputArea() noexcept { return m_inputArea; }

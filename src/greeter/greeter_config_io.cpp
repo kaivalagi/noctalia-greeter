@@ -29,7 +29,7 @@ namespace {
 
   [[nodiscard]] bool isKnownUserKey(std::string_view key) { return key == "default"; }
 
-  [[nodiscard]] bool isKnownAppearanceKey(std::string_view key) { return key == "scheme"; }
+  [[nodiscard]] bool isKnownAppearanceKey(std::string_view key) { return key == "scheme" || key == "password_style"; }
 
   [[nodiscard]] bool isKnownOutputKey(std::string_view key) {
     return key == "name" || key == "layout" || key == "scale";
@@ -121,7 +121,11 @@ namespace {
             warnUnknownSectionKey(path, keyView, entryView);
             continue;
           }
-          config.appearanceScheme = stringValue(entryNode);
+          if (entryView == "scheme") {
+            config.appearanceScheme = stringValue(entryNode);
+          } else {
+            config.appearancePasswordStyle = stringValue(entryNode);
+          }
         } else if (keyView == "output") {
           if (!isKnownOutputKey(entryView)) {
             warnUnknownSectionKey(path, keyView, entryView);
@@ -209,6 +213,12 @@ namespace {
     toml::table appearance;
     insertString(
         appearance, "scheme", config.appearanceScheme,
+        [](toml::table& table, std::string_view key, const std::string& value) {
+          table.insert_or_assign(std::string(key), value);
+        }
+    );
+    insertString(
+        appearance, "password_style", config.appearancePasswordStyle,
         [](toml::table& table, std::string_view key, const std::string& value) {
           table.insert_or_assign(std::string(key), value);
         }
@@ -325,7 +335,7 @@ namespace greeter::config {
 
     std::ostringstream out;
     out << "# noctalia-greeter greeter.toml\n";
-    out << "# [session] default/last, [user] default, [appearance] scheme\n";
+    out << "# [session] default/last, [user] default, [appearance] scheme/password_style\n";
     out << "# [output] name/layout/scale, [cursor] theme/size/path, [keyboard] layout/variant/options\n";
     out << '\n';
     out << formatToml(table);

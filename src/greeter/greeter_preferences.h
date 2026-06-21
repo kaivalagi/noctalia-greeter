@@ -14,6 +14,11 @@ namespace greeter {
     int32_t y = 0;
   };
 
+  enum class PasswordMaskStyle : std::uint8_t {
+    Default,
+    RandomIcons,
+  };
+
   struct GreeterPreferences {
     std::optional<std::string> defaultSession;
     std::optional<std::string> defaultUser;
@@ -22,6 +27,7 @@ namespace greeter {
     std::optional<std::string> output;
     // Manual UI scale; unset or invalid → auto from display geometry.
     std::optional<float> scale;
+    PasswordMaskStyle passwordMaskStyle = PasswordMaskStyle::Default;
   };
 
   [[nodiscard]] std::filesystem::path greeterConfPath();

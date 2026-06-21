@@ -7,6 +7,7 @@
 #include "greeter/logind_resume.h"
 #include "render/render_context.h"
 #include "render/text/glyph_registry.h"
+#include "ui/controls/input.h"
 #include "wayland/wayland_client.h"
 #include "wayland/wayland_seat.h"
 
@@ -64,6 +65,11 @@ bool Greeter::initialize(WaylandClient& client) {
   m_initializing = true;
 
   const greeter::GreeterPreferences prefs = greeter::loadGreeterPreferences();
+
+  Input::setPasswordMaskStyle(
+      prefs.passwordMaskStyle == greeter::PasswordMaskStyle::RandomIcons ? Input::PasswordMaskStyle::RandomIcons
+                                                                         : Input::PasswordMaskStyle::CircleFilled
+  );
 
   GlyphRegistry::initialize();
 

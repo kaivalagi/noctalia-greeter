@@ -218,6 +218,13 @@ namespace greeter {
     prefs.scheme = file.appearanceScheme;
     prefs.output = file.outputName;
     prefs.scale = file.outputScale;
+    if (file.appearancePasswordStyle.has_value()) {
+      if (*file.appearancePasswordStyle == "random") {
+        prefs.passwordMaskStyle = PasswordMaskStyle::RandomIcons;
+      } else if (*file.appearancePasswordStyle != "default") {
+        kLog.warn("invalid appearance.password_style '{}' (using filled circles)", *file.appearancePasswordStyle);
+      }
+    }
     return prefs;
   }
 
