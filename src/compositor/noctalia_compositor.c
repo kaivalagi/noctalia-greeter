@@ -784,20 +784,6 @@ static void configure_view(struct greeter_view* view) {
 static void try_launch_greeter(void* data);
 static bool start_child(struct greeter_server* server, char** argv, bool free_argv);
 
-static bool all_outputs_active(struct greeter_server* server) {
-  if (wl_list_empty(&server->outputs)) {
-    return false;
-  }
-
-  struct greeter_output* output;
-  wl_list_for_each(output, &server->outputs, link) {
-    if (!output->active) {
-      return false;
-    }
-  }
-  return true;
-}
-
 static int launch_timer_fired(void* data) {
   struct greeter_server* server = data;
   server->launch_timer = NULL;
@@ -810,11 +796,7 @@ static void schedule_launch(struct greeter_server* server) {
     return;
   }
 
-  if (use_all_outputs(server)) {
-    if (!all_outputs_active(server)) {
-      return;
-    }
-  } else if (!any_output_active(server)) {
+  if (!any_output_active(server)) {
     return;
   }
 
@@ -1253,12 +1235,8 @@ static void try_launch_greeter(void* data) {
   if (server->child_launched) {
     return;
   }
-  if (use_all_outputs(server)) {
-    if (!all_outputs_active(server)) {
-      schedule_launch(server);
-      return;
-    }
-  } else if (!any_output_active(server)) {
+  if (!any_output_active(server)) {
+    schedule_launch(server);
     return;
   }
 
