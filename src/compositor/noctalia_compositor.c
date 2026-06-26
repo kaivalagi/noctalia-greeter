@@ -811,7 +811,7 @@ static void schedule_launch(struct greeter_server* server) {
   }
 
   if (use_all_outputs(server)) {
-    if (!all_outputs_active(server)) {
+    if (!all_outputs_active(server) && !any_output_active(server)) {
       return;
     }
   } else if (!any_output_active(server)) {
@@ -1255,8 +1255,10 @@ static void try_launch_greeter(void* data) {
   }
   if (use_all_outputs(server)) {
     if (!all_outputs_active(server)) {
-      schedule_launch(server);
-      return;
+      if (!any_output_active(server)) {
+        schedule_launch(server);
+        return;
+      }
     }
   } else if (!any_output_active(server)) {
     return;
